@@ -19,14 +19,18 @@ scenarios:
 jobs:
   serversocket:
     source:
-      localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      #localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      repository: https://github.com/CarnaViire/benchmarks.git
+      branchOrCommit: socket-benchmark
       project: src/BenchmarksApps/Sockets/Server/Server.csproj
     readyStateText: Application started
     arguments: "{{serverAddress}} {{serverPort}}"
 
   clientsocket:
     source:
-      localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      #localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      repository: https://github.com/CarnaViire/benchmarks.git
+      branchOrCommit: socket-benchmark
       project: src/BenchmarksApps/Sockets/Client/Client.csproj
     isConsoleApp: true
     waitForExit: true
