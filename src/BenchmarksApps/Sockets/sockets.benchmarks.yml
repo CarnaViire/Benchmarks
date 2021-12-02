@@ -1,0 +1,68 @@
+﻿# Local run:
+# crank --config "C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks\src\BenchmarksApps\Sockets\sockets.benchmarks.yml" --scenario http --profile local
+
+# --server.aspnetcoreversion 6.0.0-preview.6.21279.2 --server.runtimeversion 6.0.0-preview.6.21279.1 --server.sdkVersion 6.0.100-preview.6.21276.12
+# --server.aspnetcoreversion 6.0.0-preview.6.21279.2 --server.runtimeversion 6.0.0-preview.6.21279.3 --server.sdkVersion 6.0.100-preview.6.21276.12
+
+variables:
+    serverPort: 5000
+    threads: 32
+
+scenarios:
+  http:
+    server:
+      job: serversocket
+    client:
+      job: clientsocket
+
+
+jobs:
+  serversocket:
+    source:
+      localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      project: src/BenchmarksApps/Sockets/Server/Server.csproj
+    readyStateText: Application started
+    arguments: "{{serverAddress}} {{serverPort}}"
+
+  clientsocket:
+    source:
+      localFolder: C:\Users\knatalia\dev\git\Benchmarks-cp\Benchmarks
+      project: src/BenchmarksApps/Sockets/Client/Client.csproj
+    isConsoleApp: true
+    waitForExit: true
+    arguments: "{{serverAddress}} {{serverPort}} {{threads}}"
+
+
+profiles:
+  local:
+    variables:
+      serverAddress: 127.0.0.1
+    jobs:
+      server:
+        endpoints: 
+          - http://localhost:5010
+      client:
+        endpoints: 
+          - http://localhost:5010
+
+  aspnet-perf-lin:
+    variables:
+      serverAddress: 10.0.0.102
+    jobs:
+      server:
+        endpoints: 
+          - http://asp-perf-lin:5001
+      client:
+        endpoints: 
+          - http://asp-perf-load:5001
+
+  aspnet-perf-win:
+    variables:
+      serverAddress: 10.0.0.110
+    jobs:
+      server:
+        endpoints: 
+          - http://asp-perf-win:5001
+      client:
+        endpoints: 
+          - http://asp-perf-db:5001
