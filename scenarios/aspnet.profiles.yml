@@ -37,7 +37,10 @@ profiles:
 
   aspnet-citrine-lin:
     variables:
-      serverAddress: 10.0.0.102
+      serverAddress: '{{applicationAddress}}'
+      dbAddress: 10.0.0.103
+      applicationAddress: 10.0.0.102
+      loadAddress: 10.0.0.105
       cores: 28
     jobs: 
       db:
@@ -49,7 +52,7 @@ profiles:
         endpoints: 
           - http://asp-citrine-lin:5001
         variables:
-          databaseServer: 10.0.0.103
+          databaseServer: '{{dbAddress}}'
       load:
         endpoints: 
           - http://asp-citrine-load:5001
