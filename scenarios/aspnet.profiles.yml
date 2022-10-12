@@ -1,12 +1,6 @@
 imports:
   - https://github.com/aspnet/Benchmarks/blob/main/scenarios/packages.yml?raw=true
 
-variables:
-  serverAddress: '{{applicationAddress}}'
-  databaseServer: '{{dbAddress}}'
-  downstreamAddress: '{{dbAddress}}'
-  hostAddress: '{{loadAddress}}'
-
 profiles:
   short:
     variables:
@@ -26,6 +20,10 @@ profiles:
       applicationAddress: localhost
       loadAddress: localhost
       dbAddress: localhost
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
     jobs: 
       db:
         endpoints: 
@@ -44,9 +42,13 @@ profiles:
 
   aspnet-citrine-lin:
     variables:
-      applicationAddress: 10.0.0.102 # citrine-lin
-      loadAddress: 10.0.0.105 # citrine-load
-      dbAddress: 10.0.0.103 # citrine-db
+      applicationAddress: 10.0.0.102
+      loadAddress: 10.0.0.105
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 28
     jobs: 
       db:
@@ -66,9 +68,13 @@ profiles:
 
   aspnet-citrine-lin-relay:
     variables:
-      applicationAddress: 10.0.0.102 # citrine-lin
-      loadAddress: 10.0.0.105 # citrine-load
-      dbAddress: 10.0.0.103 # citrine-db
+      applicationAddress: 10.0.0.102
+      loadAddress: 10.0.0.105
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 28
     jobs: 
       db:
@@ -88,9 +94,13 @@ profiles:
 
   aspnet-citrine-win:
     variables:
-      applicationAddress: 10.0.0.104 # citrine-win
-      loadAddress: 10.0.0.103 # citrine-db
-      dbAddress: 10.0.0.105 # citrine-load
+      applicationAddress: 10.0.0.104
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.105
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 28
     jobs: 
       db:
@@ -110,9 +120,13 @@ profiles:
 
   aspnet-citrine-win-relay:
     variables:
-      applicationAddress: 10.0.0.104 # citrine-win
-      loadAddress: 10.0.0.103 # citrine-db
-      dbAddress: 10.0.0.105 # citrine-load
+      applicationAddress: 10.0.0.104
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.105
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 28
     jobs: 
       db:
@@ -132,9 +146,13 @@ profiles:
           
   aspnet-citrine-arm:
     variables:
-      applicationAddress: 10.0.0.107 # citrine-arm
-      loadAddress: 10.0.0.105 # citrine-load
-      dbAddress: 10.0.0.103 # citrine-db
+      applicationAddress: 10.0.0.107
+      loadAddress: 10.0.0.105
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 32
     jobs: 
       db:
@@ -154,9 +172,13 @@ profiles:
 
   aspnet-citrine-arm-relay:
     variables:
-      applicationAddress: 10.0.0.107 # citrine-arm
-      loadAddress: 10.0.0.105 # citrine-load
-      dbAddress: 10.0.0.103 # citrine-db
+      applicationAddress: 10.0.0.107
+      loadAddress: 10.0.0.105
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 32
     jobs: 
       db:
@@ -176,9 +198,13 @@ profiles:
 
   aspnet-citrine-ampere:
     variables:
-      applicationAddress: 10.0.0.108 # citrine-ampere
-      loadAddress: 10.0.0.109 # citrine-amd2
-      dbAddress: 10.0.0.109 # citrine-amd2
+      applicationAddress: 10.0.0.108
+      loadAddress: 10.0.0.109
+      dbAddress: 10.0.0.109
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 80
     jobs: 
       db:
@@ -200,9 +226,13 @@ profiles:
 
   aspnet-citrine-arm-lin:
     variables:
-      applicationAddress: 10.0.0.108 # citrine-ampere
-      loadAddress: 10.0.0.109 # citrine-amd2
-      dbAddress: 10.0.0.106 # citrine-amd
+      applicationAddress: 10.0.0.108
+      loadAddress: 10.0.0.109
+      dbAddress: 10.0.0.106
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 80
     jobs: 
       db:
@@ -213,8 +243,6 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-ampere:5001
-        #variables:
-          #databaseServer: 10.0.0.109 -- looks like an error, see "aspnet-citrine-amd" profile for citrine-amd address = 10.0.0.106
       load:
         endpoints: 
           - http://asp-citrine-amd2:5001
@@ -224,9 +252,13 @@ profiles:
 
   aspnet-citrine-arm-lin-relay:
     variables:
-      applicationAddress: 10.0.0.108 # citrine-ampere
-      loadAddress: 10.0.0.109 # citrine-amd2
-      dbAddress: 10.0.0.106 # citrine-amd
+      applicationAddress: 10.0.0.108
+      loadAddress: 10.0.0.109
+      dbAddress: 10.0.0.106
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 80
     jobs: 
       db:
@@ -237,8 +269,6 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinearmlin
-        #variables:
-          #databaseServer: 10.0.0.109 -- looks like an error, see "aspnet-citrine-amd" profile for citrine-amd address = 10.0.0.106
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineamd2
@@ -248,9 +278,13 @@ profiles:
 
   aspnet-citrine-arm-win:
     variables:
-      applicationAddress: 10.0.0.110 # citrine-arm-win = 10.240.177.200
-      loadAddress: 10.0.0.106 # citrine-amd
-      dbAddress: 10.0.0.109 # citrine-amd2
+      applicationAddress: 10.0.0.110
+      loadAddress: 10.0.0.106
+      dbAddress: 10.0.0.109
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 80
     jobs: 
       db:
@@ -272,9 +306,13 @@ profiles:
 
   aspnet-citrine-arm-win-relay:
     variables:
-      applicationAddress: 10.0.0.110 # citrine-arm-win = 10.240.177.200
-      loadAddress: 10.0.0.106 # citrine-amd
-      dbAddress: 10.0.0.109 # citrine-amd2
+      applicationAddress: 10.0.0.110
+      loadAddress: 10.0.0.106
+      dbAddress: 10.0.0.109
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 80
     jobs: 
       db:
@@ -294,9 +332,13 @@ profiles:
 
   aspnet-citrine-amd2:
     variables:
-      applicationAddress: 10.0.0.109 # citrine-amd2
-      loadAddress: 10.0.0.103 # citrine-db
-      dbAddress: 10.0.0.105 # citrine-load
+      applicationAddress: 10.0.0.109
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.105
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 48
     jobs: 
       db:
@@ -307,8 +349,6 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-amd2:5001
-        #variables:
-          #databaseServer: 10.0.0.108 -- looks like an error, see "aspnet-citrine-win" profile for citrine-load address = 10.0.0.105
       load:
         endpoints: 
           - http://asp-citrine-db:5001
@@ -318,9 +358,13 @@ profiles:
 
   aspnet-citrine-amd:
     variables:
-      applicationAddress: 10.0.0.106 # citrine-amd
-      loadAddress: 10.0.0.103 # citrine-db
-      dbAddress: 10.0.0.105 # citrine-load
+      applicationAddress: 10.0.0.106
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.105
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 48
     jobs: 
       db:
@@ -340,9 +384,13 @@ profiles:
 
   aspnet-citrine-amd-relay:
     variables:
-      applicationAddress: 10.0.0.106 # citrine-amd
-      loadAddress: 10.0.0.103 # citrine-db
-      dbAddress: 10.0.0.105 # citrine-load
+      applicationAddress: 10.0.0.106
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.105
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 48
     jobs: 
       db:
@@ -362,9 +410,13 @@ profiles:
 
   aspnet-perf-lin:
     variables:
-      applicationAddress: 10.0.0.102 # perf-lin
-      loadAddress: 10.0.0.104 # perf-load
-      dbAddress: 10.0.0.103 # perf-db
+      applicationAddress: 10.0.0.102
+      loadAddress: 10.0.0.104
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 12
     jobs: 
       db:
@@ -384,9 +436,13 @@ profiles:
 
   aspnet-perf-lin-relay:
     variables:
-      applicationAddress: 10.0.0.102 # perf-lin
-      loadAddress: 10.0.0.104 # perf-load
-      dbAddress: 10.0.0.103 # perf-db
+      applicationAddress: 10.0.0.102
+      loadAddress: 10.0.0.104
+      dbAddress: 10.0.0.103
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 12
     jobs: 
       db:
@@ -406,9 +462,13 @@ profiles:
 
   aspnet-perf-win:
     variables:
-      applicationAddress: 10.0.0.110 # perf-win
-      loadAddress: 10.0.0.103 # perf-db
-      dbAddress: 10.0.0.104 # perf-load
+      applicationAddress: 10.0.0.110
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.104
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 12
     jobs: 
       db:
@@ -428,9 +488,13 @@ profiles:
 
   aspnet-perf-win-relay:
     variables:
-      applicationAddress: 10.0.0.110 # perf-win
-      loadAddress: 10.0.0.103 # perf-db
-      dbAddress: 10.0.0.104 # perf-load
+      applicationAddress: 10.0.0.110
+      loadAddress: 10.0.0.103
+      dbAddress: 10.0.0.104
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 12
     jobs: 
       db:

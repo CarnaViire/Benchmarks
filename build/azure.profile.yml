@@ -1,11 +1,5 @@
 # IP addresses for the Azure environment
 
-variables:
-  serverAddress: '{{applicationAddress}}'
-  databaseServer: '{{dbAddress}}'
-  downstreamAddress: '{{dbAddress}}'
-  hostAddress: '{{loadAddress}}'
-
 profiles:
   aspnet-azure-lin:
     variables:
@@ -13,6 +7,10 @@ profiles:
       applicationAddress: 10.3.0.4
       loadAddress: 10.3.0.5
       dbAddress: 10.3.0.6
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 2
     jobs: 
       db:
@@ -34,6 +32,10 @@ profiles:
       applicationAddress: 10.3.0.4
       loadAddress: 10.3.0.5
       dbAddress: 10.3.0.6
+      serverAddress: '{{applicationAddress}}'
+      hostAddress: '{{loadAddress}}'
+      databaseServer: '{{dbAddress}}'
+      downstreamAddress: '{{dbAddress}}'
       cores: 2
     jobs: 
       db:
