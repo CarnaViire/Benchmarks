@@ -2,8 +2,7 @@
 # crank --config https://raw.githubusercontent.com/aspnet/Benchmarks/main/scenarios/httpclient.benchmarks.yml --scenario httpclient-kestrel-get --profile aspnet-perf-lin --variable concurrencyPerHttpClient=200
 
 imports:
-  #- https://github.com/aspnet/Benchmarks/blob/main/scenarios/aspnet.profiles.yml?raw=true
-  - https://raw.githubusercontent.com/dotnet/crank/main/src/Microsoft.Crank.Jobs.Wrk/wrk.yml
+  - https://github.com/aspnet/Benchmarks/blob/main/scenarios/aspnet.profiles.yml?raw=true
 
 variables:
     warmup: 15 #seconds -- default value *copied* to WRK, see notes below
@@ -85,18 +84,10 @@ scenarios:
       agent: application
       variables:
         serverAddress: '{{loadAddress}}'
-        connections: '{{numberOfHttpClients}}'
-        threads: '{{numberOfHttpClients}}'
         # Overriding via console arg will make `useHttps` be a string instead of boolean, and string "false" is truthy in Liquid, so need to check explicitly
         serverScheme: 'http{% if useHttps and useHttps != "false" %}s{% endif %}'
         path: '/get'
         pipeline: 0
-        # TODO: Job's default values seem to take preference over global variables, so if the following is removed, values from `wrk.yml` will be used. 
-        # Also, substitution doesn't seem to recognize global variables of the same name, e.g. serverPort: '{{serverPort}}' doesn't work
-        # Leaving the copied values unless the way to substitute correctly is found (other configs seem to employ copying strategy)
-        # Overriding via console arg (e.g. `--variable serverPort=4321`) will work for *both* global and job's variables
-        serverPort: 5000
-        presetHeaders: '{{requestHeaders}}' # TODO: unsupported 'requestHeaders' might be parsed and passed via 'customHeaders' variable
         warmup: 15 #seconds
         duration: 15 #seconds
       onConfigure:
@@ -152,3 +143,15 @@ jobs:
     timeout: 1200 #seconds
     arguments: "--address {{serverAddress}} --port {{serverPort}} --useHttps {{useHttps}} --path /{{scenario}} --scenario {{scenario}} --httpVersion {{httpVersion}} --numberOfHttpClients {{numberOfHttpClients}} --concurrencyPerHttpClient {{concurrencyPerHttpClient}} --http11MaxConnectionsPerServer {{http11MaxConnectionsPerServer}} --http20EnableMultipleConnections {{http20EnableMultipleConnections}} --useWinHttpHandler {{useWinHttpHandler}} --useHttpMessageInvoker {{useHttpMessageInvoker}} --collectRequestTimings {{collectRequestTimings}} --contentSize {{requestContentSize}} --contentWriteSize {{requestContentWriteSize}} --contentFlushAfterWrite {{requestContentFlushAfterWrite}} --contentUnknownLength {{requestContentUnknownLength}} {{headersDictionary[requestHeaders]}} --generatedStaticHeadersCount {{generatedStaticRequestHeadersCount}} --generatedDynamicHeadersCount {{generatedDynamicRequestHeadersCount}} --useDefaultRequestHeaders {{useDefaultRequestHeaders}} --warmup {{warmup}} --duration {{duration}}"
 
+  wrk:
+    source:
+      repository: https://github.com/dotnet/crank.git
+      branchOrCommit: main
+      project: src/Microsoft.Crank.Jobs.Wrk/Microsoft.Crank.Jobs.Wrk.csproj
+      sourceKey: wrk
+      noBuild: true
+    isConsoleApp: true
+    waitForExit: true
+    arguments: "-c {{numberOfHttpClients}} {{serverScheme}}://{{serverAddress}}:{{serverPort}}{{path}} --latency -d {{duration}}s -w {{warmup}}s {% if timeout != blank and timeout != empty %} --timeout {{timeout}}s {% endif %} -t {{numberOfHttpClients}} {{headersDictionary[requestHeaders]}}"
+    options:
+      requiredOperatingSystem: linux
