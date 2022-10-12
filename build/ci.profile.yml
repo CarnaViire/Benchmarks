@@ -1,6 +1,12 @@
 imports:
   - https://github.com/aspnet/Benchmarks/blob/main/scenarios/packages.yml?raw=true
 
+variables:
+  serverAddress: '{{applicationAddress}}'
+  databaseServer: '{{dbAddress}}'
+  downstreamAddress: '{{dbAddress}}'
+  hostAddress: '{{loadAddress}}'
+
 profiles:
   short:
     variables:
@@ -9,7 +15,7 @@ profiles:
 
   intel-lin-app:
     variables:
-      serverAddress: 10.0.0.102
+      applicationAddress: 10.0.0.102
       cores: 28
     agents: 
       application:
@@ -18,7 +24,7 @@ profiles:
 
   intel-perflin-app:
     variables:
-      serverAddress: 10.0.0.102
+      applicationAddress: 10.0.0.102
       cores: 12
     agents: 
       application:
@@ -26,16 +32,19 @@ profiles:
           - http://asp-perf-lin:5001
 
   intel-lin-load:
+    variables:
+      loadAddress: 10.0.0.105
     agents:
       load:
         endpoints: 
           - http://asp-citrine-load:5001
         aliases:
           - warmup
+          - host
 
   intel-win-app:
     variables:
-      serverAddress: 10.0.0.104
+      applicationAddress: 10.0.0.104
       cores: 28
     agents: 
       application:
@@ -44,8 +53,7 @@ profiles:
 
   intel-db-db:
     variables:
-      databaseServer: 10.0.0.103
-      downstreamAddress: 10.0.0.103
+      dbAddress: 10.0.0.103
     agents:
       db:
         endpoints: 
@@ -54,17 +62,19 @@ profiles:
         - downstream
 
   intel-db-load:
+    variables:
+      loadAddress: 10.0.0.105
     agents:
       load:
         endpoints: 
           - http://asp-citrine-load:5001
         aliases:
           - warmup
+          - host
 
   intel-load-db:
     variables:
-      databaseServer: 10.0.0.105
-      downstreamAddress: 10.0.0.105
+      dbAddress: 10.0.0.105
     agents:
       db:
         endpoints: 
@@ -73,16 +83,19 @@ profiles:
         - downstream
 
   intel-load-load:
+    variables:
+      loadAddress: 10.0.0.105
     agents:
       load:
         endpoints: 
           - http://asp-citrine-load:5001
         aliases:
           - warmup
+          - host
  
   intel-load2-app:
     variables:
-      serverAddress: 10.0.0.101
+      applicationAddress: 10.0.0.101
       cores: 28
     agents:
       application:
@@ -91,8 +104,7 @@ profiles:
 
   intel-load2-db:
     variables:
-      databaseServer: 10.0.0.101
-      downstreamAddress: 10.0.0.101
+      dbAddress: 10.0.0.101
     agents:
       db:
         endpoints: 
@@ -101,16 +113,19 @@ profiles:
         - downstream
 
   intel-load2-load:
+    variables:
+      loadAddress: 10.0.0.101
     agents:
       load:
         endpoints: 
           - http://asp-citrine-load2:5001
         aliases:
           - warmup
+          - host
 
   amd-lin-app:
     variables:
-      serverAddress: 10.0.0.106
+      applicationAddress: 10.0.0.106
       cores: 48
     agents: 
       application:
@@ -118,16 +133,19 @@ profiles:
           - http://asp-citrine-amd:5001
 
   amd-lin-load:
+    variables:
+      loadAddress: 10.0.0.106
     agents: 
       load:
         endpoints: 
           - http://asp-citrine-amd:5001
         aliases:
           - warmup
+          - host
 
   amd-lin2-app:
     variables:
-      serverAddress: 10.0.0.109
+      applicationAddress: 10.0.0.109
       cores: 48
     agents: 
       application:
@@ -135,17 +153,19 @@ profiles:
           - http://asp-citrine-amd2:5001
 
   amd-lin2-load:
+    variables:
+      loadAddress: 10.0.0.109
     agents: 
       load:
         endpoints: 
           - http://asp-citrine-amd2:5001
         aliases:
           - warmup
+          - host
 
   amd-lin2-db:
     variables:
-      databaseServer: 10.0.0.109
-      downstreamAddress: 10.0.0.109
+      dbAddress: 10.0.0.109
     agents: 
       db:
         endpoints: 
@@ -155,7 +175,7 @@ profiles:
 
   arm-lin-app:
     variables:
-      serverAddress: 10.0.0.108
+      applicationAddress: 10.0.0.108
       cores: 80
     agents: 
       application:
@@ -164,7 +184,7 @@ profiles:
 
   arm-lin-28-app:
     variables:
-      serverAddress: 10.0.0.108
+      applicationAddress: 10.0.0.108
       cores: 28
     agents: 
       application:
@@ -174,7 +194,7 @@ profiles:
 
   arm-win-app:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110
       cores: 80
     agents: 
       application:
@@ -183,7 +203,7 @@ profiles:
 
   arm-win-28-app:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110
       cores: 28
     agents: 
       application:

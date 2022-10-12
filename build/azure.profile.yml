@@ -1,10 +1,18 @@
 # IP addresses for the Azure environment
 
+variables:
+  serverAddress: '{{applicationAddress}}'
+  databaseServer: '{{dbAddress}}'
+  downstreamAddress: '{{dbAddress}}'
+  hostAddress: '{{loadAddress}}'
+
 profiles:
   aspnet-azure-lin:
     variables:
       serverPort: 5000
-      serverAddress: 10.3.0.4
+      applicationAddress: 10.3.0.4
+      loadAddress: 10.3.0.5
+      dbAddress: 10.3.0.6
       cores: 2
     jobs: 
       db:
@@ -13,18 +21,19 @@ profiles:
       application:
         endpoints: 
           - http://10.3.0.4:5001
-        variables:
-          databaseServer: 10.3.0.6
       load:
         endpoints: 
           - http://10.3.0.5:5001
         aliases:
           - warmup
+          - host
 
   aspnet-azure-lin-relay:
     variables:
       serverPort: 5000
-      serverAddress: 10.3.0.4
+      applicationAddress: 10.3.0.4
+      loadAddress: 10.3.0.5
+      dbAddress: 10.3.0.6
       cores: 2
     jobs: 
       db:
@@ -33,10 +42,9 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/azureserver
-        variables:
-          databaseServer: 10.3.0.6
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/azureclient
         aliases:
           - warmup
+          - host

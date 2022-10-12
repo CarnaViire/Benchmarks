@@ -1,6 +1,12 @@
 imports:
   - https://github.com/aspnet/Benchmarks/blob/main/scenarios/packages.yml?raw=true
 
+variables:
+  serverAddress: '{{applicationAddress}}'
+  databaseServer: '{{dbAddress}}'
+  downstreamAddress: '{{dbAddress}}'
+  hostAddress: '{{loadAddress}}'
+
 profiles:
   short:
     variables:
@@ -17,7 +23,9 @@ profiles:
 
   local:
     variables:
-      serverAddress: localhost
+      applicationAddress: localhost
+      loadAddress: localhost
+      dbAddress: localhost
     jobs: 
       db:
         endpoints: 
@@ -27,20 +35,18 @@ profiles:
       application:
         endpoints: 
           - http://localhost:5010
-        variables:
-          databaseServer: localhost
       load:
         endpoints: 
           - http://localhost:5010
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-lin:
     variables:
-      serverAddress: '{{applicationAddress}}'
-      dbAddress: 10.0.0.103
-      applicationAddress: 10.0.0.102
-      loadAddress: 10.0.0.105
+      applicationAddress: 10.0.0.102 # citrine-lin
+      loadAddress: 10.0.0.105 # citrine-load
+      dbAddress: 10.0.0.103 # citrine-db
       cores: 28
     jobs: 
       db:
@@ -51,17 +57,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-lin:5001
-        variables:
-          databaseServer: '{{dbAddress}}'
       load:
         endpoints: 
           - http://asp-citrine-load:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-lin-relay:
     variables:
-      serverAddress: 10.0.0.102
+      applicationAddress: 10.0.0.102 # citrine-lin
+      loadAddress: 10.0.0.105 # citrine-load
+      dbAddress: 10.0.0.103 # citrine-db
       cores: 28
     jobs: 
       db:
@@ -72,17 +79,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinelin
-        variables:
-          databaseServer: 10.0.0.103
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineload
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-win:
     variables:
-      serverAddress: 10.0.0.104
+      applicationAddress: 10.0.0.104 # citrine-win
+      loadAddress: 10.0.0.103 # citrine-db
+      dbAddress: 10.0.0.105 # citrine-load
       cores: 28
     jobs: 
       db:
@@ -93,17 +101,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-win:5001
-        variables:
-          databaseServer: 10.0.0.105
       load:
         endpoints: 
           - http://asp-citrine-db:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-win-relay:
     variables:
-      serverAddress: 10.0.0.104
+      applicationAddress: 10.0.0.104 # citrine-win
+      loadAddress: 10.0.0.103 # citrine-db
+      dbAddress: 10.0.0.105 # citrine-load
       cores: 28
     jobs: 
       db:
@@ -114,17 +123,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinewin
-        variables:
-          databaseServer: 10.0.0.105
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinedb
         aliases:
           - warmup
+          - host
           
   aspnet-citrine-arm:
     variables:
-      serverAddress: 10.0.0.107
+      applicationAddress: 10.0.0.107 # citrine-arm
+      loadAddress: 10.0.0.105 # citrine-load
+      dbAddress: 10.0.0.103 # citrine-db
       cores: 32
     jobs: 
       db:
@@ -135,17 +145,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-arm:5001
-        variables:
-          databaseServer: 10.0.0.103
       load:
         endpoints: 
           - http://asp-citrine-load:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-arm-relay:
     variables:
-      serverAddress: 10.0.0.107
+      applicationAddress: 10.0.0.107 # citrine-arm
+      loadAddress: 10.0.0.105 # citrine-load
+      dbAddress: 10.0.0.103 # citrine-db
       cores: 32
     jobs: 
       db:
@@ -156,17 +167,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinearm
-        variables:
-          databaseServer: 10.0.0.103
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineload
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-ampere:
     variables:
-      serverAddress: 10.0.0.108
+      applicationAddress: 10.0.0.108 # citrine-ampere
+      loadAddress: 10.0.0.109 # citrine-amd2
+      dbAddress: 10.0.0.109 # citrine-amd2
       cores: 80
     jobs: 
       db:
@@ -178,16 +190,19 @@ profiles:
         endpoints: 
           - http://asp-citrine-ampere:5001
         variables:
-          databaseServer: 10.0.0.109
+          
       load:
         endpoints: 
           - http://asp-citrine-amd2:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-arm-lin:
     variables:
-      serverAddress: 10.0.0.108
+      applicationAddress: 10.0.0.108 # citrine-ampere
+      loadAddress: 10.0.0.109 # citrine-amd2
+      dbAddress: 10.0.0.106 # citrine-amd
       cores: 80
     jobs: 
       db:
@@ -198,17 +213,20 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-ampere:5001
-        variables:
-          databaseServer: 10.0.0.109
+        #variables:
+          #databaseServer: 10.0.0.109 -- looks like an error, see "aspnet-citrine-amd" profile for citrine-amd address = 10.0.0.106
       load:
         endpoints: 
           - http://asp-citrine-amd2:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-arm-lin-relay:
     variables:
-      serverAddress: 10.0.0.108
+      applicationAddress: 10.0.0.108 # citrine-ampere
+      loadAddress: 10.0.0.109 # citrine-amd2
+      dbAddress: 10.0.0.106 # citrine-amd
       cores: 80
     jobs: 
       db:
@@ -219,17 +237,20 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinearmlin
-        variables:
-          databaseServer: 10.0.0.109
+        #variables:
+          #databaseServer: 10.0.0.109 -- looks like an error, see "aspnet-citrine-amd" profile for citrine-amd address = 10.0.0.106
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineamd2
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-arm-win:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110 # citrine-arm-win = 10.240.177.200
+      loadAddress: 10.0.0.106 # citrine-amd
+      dbAddress: 10.0.0.109 # citrine-amd2
       cores: 80
     jobs: 
       db:
@@ -241,16 +262,19 @@ profiles:
         endpoints: 
           - http://10.240.177.200:5001
         variables:
-          databaseServer: 10.0.0.109
+          databaseServer: '{{dbAddress}}'
       load:
         endpoints: 
           - http://asp-citrine-amd:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-arm-win-relay:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110 # citrine-arm-win = 10.240.177.200
+      loadAddress: 10.0.0.106 # citrine-amd
+      dbAddress: 10.0.0.109 # citrine-amd2
       cores: 80
     jobs: 
       db:
@@ -261,17 +285,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinearmwin
-        variables:
-          databaseServer: 10.0.0.109
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineamd
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-amd2:
     variables:
-      serverAddress: 10.0.0.109
+      applicationAddress: 10.0.0.109 # citrine-amd2
+      loadAddress: 10.0.0.103 # citrine-db
+      dbAddress: 10.0.0.105 # citrine-load
       cores: 48
     jobs: 
       db:
@@ -282,17 +307,20 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-amd2:5001
-        variables:
-          databaseServer: 10.0.0.108
+        #variables:
+          #databaseServer: 10.0.0.108 -- looks like an error, see "aspnet-citrine-win" profile for citrine-load address = 10.0.0.105
       load:
         endpoints: 
           - http://asp-citrine-db:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-amd:
     variables:
-      serverAddress: 10.0.0.106
+      applicationAddress: 10.0.0.106 # citrine-amd
+      loadAddress: 10.0.0.103 # citrine-db
+      dbAddress: 10.0.0.105 # citrine-load
       cores: 48
     jobs: 
       db:
@@ -303,17 +331,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-citrine-amd:5001
-        variables:
-          databaseServer: 10.0.0.105
       load:
         endpoints: 
           - http://asp-citrine-db:5001
         aliases:
           - warmup
+          - host
 
   aspnet-citrine-amd-relay:
     variables:
-      serverAddress: 10.0.0.106
+      applicationAddress: 10.0.0.106 # citrine-amd
+      loadAddress: 10.0.0.103 # citrine-db
+      dbAddress: 10.0.0.105 # citrine-load
       cores: 48
     jobs: 
       db:
@@ -324,17 +353,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrineamd
-        variables:
-          databaseServer: 10.0.0.105
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/citrinedb
         aliases:
           - warmup
+          - host
 
   aspnet-perf-lin:
     variables:
-      serverAddress: 10.0.0.102
+      applicationAddress: 10.0.0.102 # perf-lin
+      loadAddress: 10.0.0.104 # perf-load
+      dbAddress: 10.0.0.103 # perf-db
       cores: 12
     jobs: 
       db:
@@ -345,17 +375,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-perf-lin:5001
-        variables:
-          databaseServer: 10.0.0.103
       load:
         endpoints: 
           - http://asp-perf-load:5001
         aliases:
           - warmup
+          - host
 
   aspnet-perf-lin-relay:
     variables:
-      serverAddress: 10.0.0.102
+      applicationAddress: 10.0.0.102 # perf-lin
+      loadAddress: 10.0.0.104 # perf-load
+      dbAddress: 10.0.0.103 # perf-db
       cores: 12
     jobs: 
       db:
@@ -366,17 +397,18 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/perflin
-        variables:
-          databaseServer: 10.0.0.103
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/perfload
         aliases:
           - warmup
+          - host
 
   aspnet-perf-win:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110 # perf-win
+      loadAddress: 10.0.0.103 # perf-db
+      dbAddress: 10.0.0.104 # perf-load
       cores: 12
     jobs: 
       db:
@@ -387,17 +419,18 @@ profiles:
       application:
         endpoints: 
           - http://asp-perf-win:5001
-        variables:
-          databaseServer: 10.0.0.104
       load:
         endpoints: 
           - http://asp-perf-db:5001
         aliases:
           - warmup
+          - host
 
   aspnet-perf-win-relay:
     variables:
-      serverAddress: 10.0.0.110
+      applicationAddress: 10.0.0.110 # perf-win
+      loadAddress: 10.0.0.103 # perf-db
+      dbAddress: 10.0.0.104 # perf-load
       cores: 12
     jobs: 
       db:
@@ -408,10 +441,9 @@ profiles:
       application:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/perfwin
-        variables:
-          databaseServer: 10.0.0.104
       load:
         endpoints: 
           - https://aspnetperf.servicebus.windows.net/perfdb
         aliases:
           - warmup
+          - host
