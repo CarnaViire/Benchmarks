@@ -1,0 +1,45 @@
+# Example (repository):
+# crank --config https://raw.githubusercontent.com/CarnaViire/Benchmarks/helloworld/src/BenchmarksApps/Samples/HelloWorld/Sockets/sockets.helloworld.benchmarks.yml --scenario helloworld --profile aspnet-perf-lin
+
+# Example (localFolder):
+# crank --config "C:\Users\knatalia\dev\git\Benchmarks\src\BenchmarksApps\Samples\HelloWorld\Sockets\sockets.helloworld.benchmarks.yml" --scenario helloworld --profile aspnet-perf-lin
+
+imports:
+  - https://raw.githubusercontent.com/aspnet/Benchmarks/main/scenarios/aspnet.profiles.standard.yml
+
+variables:
+  serverPort: 5000
+
+scenarios:
+  helloworld:
+    server:
+      job: socketServer
+      agent: secondary
+      variables:
+        host: '{{secondaryAddress}}'
+    client:
+      job: socketClient
+      agent: main
+      variables:
+        host: '{{secondaryAddress}}'
+
+jobs:
+  socketServer:
+    source:
+      #localFolder: C:\Users\knatalia\dev\git\Benchmarks
+      repository: https://github.com/CarnaViire/benchmarks.git
+      branchOrCommit: helloworld
+      project: src/BenchmarksApps/Samples/HelloWorld/Sockets/SocketServer/SocketServer.csproj
+    readyStateText: Server started # app should write this line to output
+    arguments: '{{host}} {{serverPort}}'
+  
+  socketClient:
+    source:
+      #localFolder: C:\Users\knatalia\dev\git\Benchmarks
+      repository: https://github.com/CarnaViire/benchmarks.git
+      branchOrCommit: helloworld
+      project: src/BenchmarksApps/Samples/HelloWorld/Sockets/SocketClient/SocketClient.csproj
+    isConsoleApp: true
+    waitForExit: true
+    timeout: 1200 #seconds
+    arguments: '{{host}} {{serverPort}}'
