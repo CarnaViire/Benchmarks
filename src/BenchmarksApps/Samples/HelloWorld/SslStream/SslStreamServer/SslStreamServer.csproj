@@ -5,11 +5,6 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <LangVersion>preview</LangVersion>
   </PropertyGroup>
-
-  <ItemGroup>
-   <PackageReference Include="Microsoft.Crank.EventSources" Version="0.2.0-alpha.23555.1" />
-  </ItemGroup>
 
 </Project>

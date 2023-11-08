@@ -16,7 +16,7 @@ var port = int.Parse(args[1]);
 BenchmarksEventSource.Register("socket/sent", Operations.Sum, Operations.Sum, "Bytes sent", "Bytes sent", "n0");
 BenchmarksEventSource.Register("socket/recv", Operations.Sum, Operations.Sum, "Bytes received", "Bytes received", "n0");
 
-var bytes = "Hello, World!"u8.ToArray();
+var bytes = "Hello World"u8.ToArray();
 var buffer = new byte[bytes.Length + 1];
 
 // ---
