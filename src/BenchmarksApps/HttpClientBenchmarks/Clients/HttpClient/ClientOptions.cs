@@ -32,6 +32,9 @@ namespace HttpClientBenchmarks
         public bool UseDefaultRequestHeaders { get; set; }
         public int Warmup { get; set; }
         public int Duration { get; set; }
+        public bool UseHttpClientFactory { get; set; }
+        public int HcfHandlerLifetime { get; set; }
+        public int PooledConnectionLifetime { get; set; }
 
         public override string ToString()
         {
@@ -42,7 +45,8 @@ namespace HttpClientBenchmarks
                 $"ContentSize={ContentSize}; ContentWriteSize={ContentWriteSize}; ContentFlushAfterWrite={ContentFlushAfterWrite}; " +
                 $"ContentUnknownLength={ContentUnknownLength}; Headers=[{string.Join(", ", Headers.Select(h => $"\"{h.Name}: {h.Value}\""))}]; " +
                 $"GeneratedStaticHeadersCount={GeneratedStaticHeadersCount}; GeneratedDynamicHeadersCount={GeneratedDynamicHeadersCount}; " +
-                $"UseDefaultRequestHeaders={UseDefaultRequestHeaders}; Warmup={Warmup}; Duration={Duration}";
+                $"UseDefaultRequestHeaders={UseDefaultRequestHeaders}; Warmup={Warmup}; Duration={Duration}; UseHttpClientFactory={UseHttpClientFactory}; " +
+                $"HcfHandlerLifetime={HcfHandlerLifetime}; PooledConnectionLifetime={PooledConnectionLifetime}";
         }
     }
 }

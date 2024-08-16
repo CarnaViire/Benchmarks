@@ -15,6 +15,9 @@ variables:
     collectRequestTimings: false # unsupported by WRK -- other values will throw
     responseSize: 0 # 0 for no content in response
     http3StreamLimit: 0 # 0 for server default. Max value is 65535
+    useHttpClientFactory: false
+    hcfHandlerLifetime: 120 #seconds
+    pooledConnectionLifetime: -1 #infinite
 
     # POST-specific parameters:
     requestContentSize: 0 # 0 for no content
@@ -162,13 +165,14 @@ jobs:
 
   httpClient:
     source:
-      repository: https://github.com/aspnet/benchmarks.git
-      branchOrCommit: main
+      localFolder: C:\Users\knatalia\dev\git\Benchmarks\
+      #repository: https://github.com/aspnet/benchmarks.git
+      #branchOrCommit: main
       project: src/BenchmarksApps/HttpClientBenchmarks/Clients/HttpClient/HttpClient.csproj
     isConsoleApp: true
     waitForExit: true
     timeout: 1200 #seconds
-    arguments: '--address {{host}} --port {{serverPort}} --useHttps {{useHttps}} --path /{{scenario}} --scenario {{scenario}} --httpVersion {{httpVersion}} --numberOfHttpClients {{numberOfHttpClients}} --concurrencyPerHttpClient {{concurrencyPerHttpClient}} --http11MaxConnectionsPerServer {{http11MaxConnectionsPerServer}} --http20EnableMultipleConnections {{http20EnableMultipleConnections}} --useWinHttpHandler {{useWinHttpHandler}} --useHttpMessageInvoker {{useHttpMessageInvoker}} --collectRequestTimings {{collectRequestTimings}} --contentSize {{requestContentSize}} --contentWriteSize {{requestContentWriteSize}} --contentFlushAfterWrite {{requestContentFlushAfterWrite}} --contentUnknownLength {{requestContentUnknownLength}} {{headersDictionary[requestHeaders]}} --generatedStaticHeadersCount {{generatedStaticRequestHeadersCount}} --generatedDynamicHeadersCount {{generatedDynamicRequestHeadersCount}} --useDefaultRequestHeaders {{useDefaultRequestHeaders}} --warmup {{warmup}} --duration {{duration}}'
+    arguments: '--address {{host}} --port {{serverPort}} --useHttps {{useHttps}} --path /{{scenario}} --scenario {{scenario}} --httpVersion {{httpVersion}} --numberOfHttpClients {{numberOfHttpClients}} --concurrencyPerHttpClient {{concurrencyPerHttpClient}} --http11MaxConnectionsPerServer {{http11MaxConnectionsPerServer}} --http20EnableMultipleConnections {{http20EnableMultipleConnections}} --useWinHttpHandler {{useWinHttpHandler}} --useHttpMessageInvoker {{useHttpMessageInvoker}} --collectRequestTimings {{collectRequestTimings}} --contentSize {{requestContentSize}} --contentWriteSize {{requestContentWriteSize}} --contentFlushAfterWrite {{requestContentFlushAfterWrite}} --contentUnknownLength {{requestContentUnknownLength}} {{headersDictionary[requestHeaders]}} --generatedStaticHeadersCount {{generatedStaticRequestHeadersCount}} --generatedDynamicHeadersCount {{generatedDynamicRequestHeadersCount}} --useDefaultRequestHeaders {{useDefaultRequestHeaders}} --warmup {{warmup}} --duration {{duration}} --useHttpClientFactory {{useHttpClientFactory}} --hcfHandlerLifetime {{hcfHandlerLifetime}} --pooledConnectionLifetime {{pooledConnectionLifetime}}'
 
   wrk:
     source:
@@ -182,3 +186,5 @@ jobs:
     arguments: '-c {{numberOfHttpClients}} http{% if useHttps and useHttps != "false" %}s{% endif %}://{{host}}:{{serverPort}}{{path}} --latency -d {{duration}}s -w {{warmup}}s {% if timeout != blank and timeout != empty %} --timeout {{timeout}}s {% endif %} -t {{numberOfHttpClients}} {{headersDictionary[requestHeaders]}}'
     options:
       requiredOperatingSystem: linux
+
+

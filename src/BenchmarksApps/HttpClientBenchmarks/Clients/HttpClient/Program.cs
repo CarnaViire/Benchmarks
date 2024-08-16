@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -10,6 +11,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Crank.EventSources;
+using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.Tracing;
 
 namespace HttpClientBenchmarks
 {
@@ -35,6 +38,13 @@ namespace HttpClientBenchmarks
         private static bool s_isWarmup;
         private static bool s_isRunning;
 
+        private static IHttpClientFactory? s_httpClientFactory;
+        private static IHttpMessageHandlerFactory? s_httpMessageHandlerFactory;
+        private static string[]? s_httpClientNames;
+
+        private static Func<int, HttpMessageInvoker>? s_clientFactory;
+        private static EventListener? s_listener;
+
         public static async Task<int> Main(string[] args)
         {
             var rootCommand = new RootCommand();
@@ -47,15 +57,15 @@ namespace HttpClientBenchmarks
                     Log("Options: " + s_options);
                     ValidateOptions();
 
-                    await Setup();
+                    await Setup().ConfigureAwait(false);
                     Log("Setup done");
 
-                    await RunScenario();
+                    await RunScenario().ConfigureAwait(false);
                     Log("Scenario done");
                 },
                 new ClientOptionsBinder());
 
-            return await rootCommand.InvokeAsync(args);
+            return await rootCommand.InvokeAsync(args).ConfigureAwait(false);
         }
 
         private static void ValidateOptions()
@@ -103,50 +113,9 @@ namespace HttpClientBenchmarks
                 CreateGeneratedHeaders();
             }
 
-            int max11ConnectionsPerServer = s_options.Http11MaxConnectionsPerServer > 0 ? s_options.Http11MaxConnectionsPerServer : int.MaxValue;
-
-            for (int i = 0; i < s_options.NumberOfHttpClients; ++i)
-            {
-                HttpMessageHandler handler;
-                if (s_options.UseWinHttpHandler)
-                {
-                    // Disable "only supported on: 'windows'" warning -- options are already validated
-    #pragma warning disable CA1416
-                    handler = new WinHttpHandler()
-                    {
-                        // accept all certs
-                        ServerCertificateValidationCallback = delegate { return true; },
-                        MaxConnectionsPerServer = max11ConnectionsPerServer,
-                        EnableMultipleHttp2Connections = s_options.Http20EnableMultipleConnections
-                    };
-    #pragma warning restore CA1416
-                }
-                else
-                {
-                    handler = new SocketsHttpHandler()
-                    {
-                        // accept all certs
-                        SslOptions = new SslClientAuthenticationOptions { RemoteCertificateValidationCallback = delegate { return true; } },
-                        MaxConnectionsPerServer = max11ConnectionsPerServer,
-                        EnableMultipleHttp2Connections = s_options.Http20EnableMultipleConnections,
-                        ConnectTimeout = Timeout.InfiniteTimeSpan,
-                    };
-                }
-
-                if (s_options.UseHttpMessageInvoker)
-                {
-                    s_httpClients.Add(new HttpMessageInvoker(handler));
-                }
-                else
-                {
-                    var client = new HttpClient(handler);
-                    if (s_options.UseDefaultRequestHeaders)
-                    {
-                        AddStaticHeaders(client.DefaultRequestHeaders);
-                    }
-                    s_httpClients.Add(client);
-                }
-            }
+            s_clientFactory = s_options.UseHttpClientFactory
+                ? CreateDIHttpClientFactory()
+                : CreateStaticHttpClientFactory();
 
             if (s_options.ContentSize > 0)
             {
@@ -156,11 +125,102 @@ namespace HttpClientBenchmarks
             // First request to the server; to ensure everything started correctly
             var request = CreateRequest(HttpMethod.Get, new Uri(baseUrl));
             var stopwatch = Stopwatch.StartNew();
-            var response = await SendAsync(s_httpClients[0], request);
+            var response = await SendAsync(s_clientFactory(0), request).ConfigureAwait(false);
             var elapsed = stopwatch.ElapsedMilliseconds;
             response.EnsureSuccessStatusCode();
             BenchmarksEventSource.Register("http/firstrequest", Operations.Max, Operations.Max, "First request duration (ms)", "Duration of the first request to the server (ms)", "n0");
             LogMetric("http/firstrequest", elapsed);
+        }
+
+        private static Func<int, HttpMessageInvoker> CreateDIHttpClientFactory()
+        {
+            s_httpClientNames = new string[s_options.NumberOfHttpClients];
+            for (int i = 0; i < s_options.NumberOfHttpClients; ++i)
+            {
+                s_httpClientNames[i] = "client_" + i;
+            }
+
+            var services = new ServiceCollection();
+            for (int i = 0; i < s_options.NumberOfHttpClients; ++i)
+            {
+                var config = services.AddHttpClient(s_httpClientNames[i])
+                    .ConfigurePrimaryHttpMessageHandler(() => CreateHandler())
+                    .SetHandlerLifetime(TimeSpan.FromSeconds(s_options.HcfHandlerLifetime));
+
+                if (s_options.UseDefaultRequestHeaders)
+                {
+                    config.ConfigureHttpClient(client =>
+                    {
+                        AddStaticHeaders(client.DefaultRequestHeaders);
+                    });
+                }
+            }
+            var serviceProvider = services.BuildServiceProvider();
+
+            if (s_options.UseHttpMessageInvoker)
+            {
+                s_httpMessageHandlerFactory = serviceProvider.GetRequiredService<IHttpMessageHandlerFactory>();
+                return static i => new HttpMessageInvoker(s_httpMessageHandlerFactory.CreateHandler(s_httpClientNames[i]));
+            }
+            else
+            {
+                s_httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+                return static i => s_httpClientFactory.CreateClient(s_httpClientNames[i]);
+            }
+        }
+
+        private static Func<int, HttpMessageInvoker> CreateStaticHttpClientFactory()
+        {
+            for (int i = 0; i < s_options.NumberOfHttpClients; ++i)
+            {
+                if (s_options.UseHttpMessageInvoker)
+                {
+                    s_httpClients.Add(new HttpMessageInvoker(CreateHandler()));
+                }
+                else
+                {
+                    var client = new HttpClient(CreateHandler());
+                    if (s_options.UseDefaultRequestHeaders)
+                    {
+                        AddStaticHeaders(client.DefaultRequestHeaders);
+                    }
+                    s_httpClients.Add(client);
+                }
+            }
+
+            return static i => s_httpClients[i];
+        }
+
+        private static HttpMessageHandler CreateHandler()
+        {
+            int max11ConnectionsPerServer = s_options.Http11MaxConnectionsPerServer > 0 ? s_options.Http11MaxConnectionsPerServer : int.MaxValue;
+            TimeSpan pooledConnectionLifetime = s_options.PooledConnectionLifetime >= 0 ? TimeSpan.FromSeconds(s_options.PooledConnectionLifetime) : Timeout.InfiniteTimeSpan;
+
+            if (s_options.UseWinHttpHandler)
+            {
+                // Disable "only supported on: 'windows'" warning -- options are already validated
+#pragma warning disable CA1416
+                return new WinHttpHandler()
+                {
+                    // accept all certs
+                    ServerCertificateValidationCallback = delegate { return true; },
+                    MaxConnectionsPerServer = max11ConnectionsPerServer,
+                    EnableMultipleHttp2Connections = s_options.Http20EnableMultipleConnections
+                };
+#pragma warning restore CA1416
+            }
+            else
+            {
+                return new SocketsHttpHandler()
+                {
+                    // accept all certs
+                    SslOptions = new SslClientAuthenticationOptions { RemoteCertificateValidationCallback = delegate { return true; } },
+                    MaxConnectionsPerServer = max11ConnectionsPerServer,
+                    EnableMultipleHttp2Connections = s_options.Http20EnableMultipleConnections,
+                    ConnectTimeout = Timeout.InfiniteTimeSpan,
+                    PooledConnectionLifetime = pooledConnectionLifetime
+                };
+            }
         }
 
         private static async Task RunScenario()
@@ -177,7 +237,7 @@ namespace HttpClientBenchmarks
                 RegisterPercentiledMetric("http/contentend", "Time to last response content byte (ms)", "Time to last response content byte (ms)");
             }
 
-            Func<HttpMessageInvoker, Task<Metrics>> scenario;
+            Func<Func<HttpMessageInvoker>, bool, Task<Metrics>> scenario;
             switch(s_options.Scenario)
             {
                 case "get":
@@ -195,10 +255,12 @@ namespace HttpClientBenchmarks
 
             var coordinatorTask = Task.Run(async () =>
             {
-                await Task.Delay(TimeSpan.FromSeconds(s_options.Warmup));
+                await Task.Delay(TimeSpan.FromSeconds(s_options.Warmup)).ConfigureAwait(false);
                 s_isWarmup = false;
+                StartCountersListener();
                 Log("Completing warmup...");
-                await Task.Delay(TimeSpan.FromSeconds(s_options.Duration));
+
+                await Task.Delay(TimeSpan.FromSeconds(s_options.Duration)).ConfigureAwait(false);
                 s_isRunning = false;
                 Log("Completing scenario...");
             });
@@ -206,15 +268,16 @@ namespace HttpClientBenchmarks
             var tasks = new List<Task<Metrics>>(s_options.NumberOfHttpClients * s_options.ConcurrencyPerHttpClient);
             for (int i = 0; i < s_options.NumberOfHttpClients; ++i)
             {
-                var client = s_httpClients[i];
+                var idx = i;
+                var ithClientFactory = () => s_clientFactory!(idx);
                 for (int j = 0; j < s_options.ConcurrencyPerHttpClient; ++j)
                 {
-                    tasks.Add(scenario(client));
+                    tasks.Add(scenario(/* clientFactory: */ ithClientFactory, /* shortLivedClient: */ s_options.UseHttpClientFactory));
                 }
             }
 
-            await coordinatorTask;
-            var metricsArray = await Task.WhenAll(tasks);
+            await coordinatorTask.ConfigureAwait(false);
+            var metricsArray = await Task.WhenAll(tasks).ConfigureAwait(false);
             foreach (var metrics in metricsArray)
             {
                 s_metrics.Add(metrics);
@@ -233,18 +296,58 @@ namespace HttpClientBenchmarks
             }
         }
 
-        private static Task<Metrics> Get(HttpMessageInvoker client)
+        private static void StartCountersListener()
         {
-            return Measure(() =>
+            if (s_options.HttpVersion == HttpVersion.Version30)
+            {
+                s_listener = new CountersListener(NetEventCounters.EventCounters_H3);
+            }
+            else if (s_options.HttpVersion == HttpVersion.Version20)
+            {
+                s_listener = new CountersListener(NetEventCounters.EventCounters_H2);
+            }
+            else
+            {
+                s_listener = new CountersListener(NetEventCounters.EventCounters_H1);
+            }
+        }
+
+        private static Task<Metrics> Get(Func<HttpMessageInvoker> clientFactory, bool shortLivedClient)
+        {
+            if (shortLivedClient)
+            {
+                return Measure(async () =>
+                {
+                    using var client = clientFactory(); // created each time
+                    return await SendGetRequestAsync(client).ConfigureAwait(false);
+                });
+            }
+
+            var client = clientFactory(); // created once
+            return Measure(() => SendGetRequestAsync(client));
+
+            static Task<HttpResponseMessage> SendGetRequestAsync(HttpMessageInvoker client)
             {
                 var request = CreateRequest(HttpMethod.Get, s_url);
                 return SendAsync(client, request);
-            });
+            }
         }
 
-        private static Task<Metrics> Post(HttpMessageInvoker client)
+        private static Task<Metrics> Post(Func<HttpMessageInvoker> clientFactory, bool shortLivedClient)
         {
-            return Measure(async () =>
+            if (shortLivedClient)
+            {
+                return Measure(async () =>
+                {
+                    using var client = clientFactory(); // created each time
+                    return await SendPostRequestAsync(client).ConfigureAwait(false);
+                });
+            }
+
+            var client = clientFactory(); // created once
+            return Measure(() => SendPostRequestAsync(client));
+
+            static async Task<HttpResponseMessage> SendPostRequestAsync(HttpMessageInvoker client)
             {
                 var request = CreateRequest(HttpMethod.Post, s_url);
 
@@ -266,25 +369,25 @@ namespace HttpClientBenchmarks
                     // Otherwise, we don't need to set TransferEncodingChunked for HTTP/1.1 manually, it's done automatically if ContentLength is absent
 
                     responseTask = SendAsync(client, request);
-                    var requestContentStream = await requestContent.GetStreamAsync();
+                    var requestContentStream = await requestContent.GetStreamAsync().ConfigureAwait(false);
 
                     for (int i = 0; i < s_fullChunkCount; ++i)
                     {
-                        await requestContentStream.WriteAsync(s_requestContentData);
+                        await requestContentStream.WriteAsync(s_requestContentData).ConfigureAwait(false);
                         if (s_options.ContentFlushAfterWrite)
                         {
-                            await requestContentStream.FlushAsync();
+                            await requestContentStream.FlushAsync().ConfigureAwait(false);
                         }
                     }
                     if (s_requestContentLastChunk != null)
                     {
-                        await requestContentStream.WriteAsync(s_requestContentLastChunk);
+                        await requestContentStream.WriteAsync(s_requestContentLastChunk).ConfigureAwait(false);
                     }
                     requestContent.CompleteStream();
                 }
 
-                return await responseTask;
-            });
+                return await responseTask.ConfigureAwait(false);
+            }
         }
 
         private static async Task<Metrics> Measure(Func<Task<HttpResponseMessage>> sendAsync)
@@ -316,18 +419,18 @@ namespace HttpClientBenchmarks
                 try
                 {
                     stopwatch.Restart();
-                    using HttpResponseMessage result = await sendAsync();
+                    using HttpResponseMessage result = await sendAsync().ConfigureAwait(false);
                     var headersTime = stopwatch.ElapsedTicks;
 
                     if (result.IsSuccessStatusCode)
                     {
-                        using var content = await result.Content.ReadAsStreamAsync();
-                        var bytesRead = await content.ReadAsync(drainArray);
+                        using var content = await result.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                        var bytesRead = await content.ReadAsync(drainArray).ConfigureAwait(false);
                         var contentStartTime = stopwatch.ElapsedTicks;
 
                         while (bytesRead != 0)
                         {
-                            bytesRead = await content.ReadAsync(drainArray);
+                            bytesRead = await content.ReadAsync(drainArray).ConfigureAwait(false);
                         }
                         var contentEndTime = stopwatch.ElapsedTicks;
 
@@ -396,7 +499,7 @@ namespace HttpClientBenchmarks
         }
 
         private static HttpRequestMessage CreateRequest(HttpMethod method, Uri uri) =>
-            new HttpRequestMessage(method, uri) { 
+            new HttpRequestMessage(method, uri) {
                 Version = s_options.HttpVersion!,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact
             };
@@ -448,7 +551,7 @@ namespace HttpClientBenchmarks
             }
         }
 
-        private static void Log(string message)
+        public static void Log(string message)
         {
             var time = DateTime.UtcNow.ToString("hh:mm:ss.fff");
             Console.WriteLine($"[{time}] {message}");
@@ -496,7 +599,7 @@ namespace HttpClientBenchmarks
             LogMetric(name + "/max", prepareValue(GetPercentile(100, values)));
         }
 
-        private static void LogMetric(string name, double value)
+        public static void LogMetric(string name, double value)
         {
             BenchmarksEventSource.Measure(name, value);
             Log($"{name}: {value}");
@@ -506,6 +609,271 @@ namespace HttpClientBenchmarks
         {
             BenchmarksEventSource.Measure(name, value);
             Log($"{name}: {value}");
+        }
+    }
+
+    public static class NetEventCounters
+    {
+        /*private static readonly List<string> s_aspNetCoreHttpConnections = new List<string>
+        {
+            "connections-started",
+            "connections-stopped",
+            "connections-timed-out",
+            "current-connections",
+            "connections-duration",
+        };
+
+        private static readonly List<string> s_aspNetCoreKestrel = new List<string>
+        {
+            "connections-per-second",
+            "total-connections",
+            "tls-handshakes-per-second",
+            "total-tls-handshakes",
+            "current-tls-handshakes",
+            "failed-tls-handshakes",
+            "current-connections",
+            "connection-queue-length",
+            "request-queue-length",
+            "current-upgraded-requests",
+        };*/
+
+        private static readonly List<string> s_systemNetHttp_H1 = new List<string>
+        {
+            "http11-connections-current-total",
+            "http11-requests-queue-duration",
+        };
+
+        private static readonly List<string> s_systemNetHttp_H2 = new List<string>
+        {
+            "http20-connections-current-total",
+            "http20-requests-queue-duration",
+        };
+
+        private static readonly List<string> s_systemNetHttp_H3 = new List<string>
+        {
+            "http30-connections-current-total",
+            "http30-requests-queue-duration",
+        };
+
+        private static readonly List<string> s_systemNetSecurity = new List<string>
+        {
+            "tls-handshake-rate",
+            "total-tls-handshakes",
+            "current-tls-handshakes",
+            "failed-tls-handshakes",
+            "tls13-sessions-open",
+            "tls13-handshake-duration",
+        };
+
+        private static readonly List<string> s_systemNetSockets = new List<string>
+        {
+            "current-outgoing-connect-attempts",
+            "outgoing-connections-established",
+        };
+
+        public static Dictionary<string, List<string>> EventCounters_H1 { get; } = new Dictionary<string, List<string>>
+        {
+            //{ "Microsoft.AspNetCore.Http.Connections",  s_aspNetCoreHttpConnections },
+            //{ "Microsoft-AspNetCore-Server-Kestrel",    s_aspNetCoreKestrel },
+            //{ "System.Net.Http",                        s_systemNetHttp },
+            { "System.Net.Http",                        s_systemNetHttp_H1 },
+            { "System.Net.Security",                    s_systemNetSecurity },
+            { "System.Net.Sockets",                     s_systemNetSockets },
+        };
+
+        public static Dictionary<string, List<string>> EventCounters_H2 { get; } = new Dictionary<string, List<string>>
+        {
+            { "System.Net.Http",                        s_systemNetHttp_H2 },
+            { "System.Net.Security",                    s_systemNetSecurity },
+            { "System.Net.Sockets",                     s_systemNetSockets },
+        };
+
+        public static Dictionary<string, List<string>> EventCounters_H3 { get; } = new Dictionary<string, List<string>>
+        {
+            { "System.Net.Http",                        s_systemNetHttp_H3 },
+        };
+    }
+
+    public sealed class CountersListener : EventListener
+    {
+        private List<EventSource> _eventSources = new List<EventSource>();
+        private Dictionary<string, List<CounterKey>> _eventCounters { get; } = null!;
+
+        record struct CounterKey(string EventSourceName, string CounterName, string? Type = null);
+        record struct CounterMetric(string MetricName, string DisplayName, Operations operation = Operations.First, bool IsTotal = false);
+        private static Dictionary<CounterKey, CounterMetric> CounterMetricData = new Dictionary<CounterKey, CounterMetric>();
+
+        public static void Log(string message) => Program.Log(message);
+        public static void LogMetric(string name, double value) => BenchmarksEventSource.Measure(name, value);
+
+        public CountersListener(Dictionary<string, List<string>> eventCounters)
+        {
+            List<EventSource> eventSources = _eventSources;
+
+            lock (this)
+            {
+                _eventCounters = eventCounters.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Select(counterName => new CounterKey(kvp.Key, counterName)).ToList());
+                _eventSources = null!;
+            }
+
+            // eventSources were populated in the base ctor and are now owned by this thread, enable them now.
+            foreach (EventSource eventSource in eventSources)
+            {
+                if (_eventCounters.ContainsKey(eventSource.Name))
+                {
+                    EnableEventSource(eventSource);
+                }
+            }
+        }
+
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            // We're likely called from base ctor, if so, just save the event source for later initialization.
+            if (_eventCounters is null)
+            {
+                lock (this)
+                {
+                    if (_eventCounters is null)
+                    {
+                        _eventSources.Add(eventSource);
+                        return;
+                    }
+                }
+            }
+
+            // Second pass called after our ctor, allow logging for specified source names.
+            if (_eventCounters.ContainsKey(eventSource.Name))
+            {
+                EnableEventSource(eventSource);
+            }
+        }
+
+        private void EnableEventSource(EventSource eventSource)
+        {
+            var eventLevel = EventLevel.Critical;
+            var arguments = new Dictionary<string, string?> { { "EventCounterIntervalSec", "1" } };
+
+            EnableEvents(eventSource, eventLevel, EventKeywords.None, arguments);
+        }
+
+        protected override void OnEventWritten(EventWrittenEventArgs eventData)
+        {
+            var eventSourceName = eventData.EventSource.Name;
+            if (eventData.EventId == -1)
+            {
+                if (!_eventCounters.TryGetValue(eventSourceName, out var allowedCounters))
+                {
+                    return;
+                }
+
+                if (eventData.EventName != "EventCounters" ||
+                    eventData.Payload?.Count != 1 ||
+                    eventData.Payload[0] is not IDictionary<string, object> counters ||
+                    !counters.TryGetValue("Name", out var obj) ||
+                    obj is not string name)
+                {
+                    Log($"Failed to parse EventCounters event from {eventSourceName}");
+                    return;
+                }
+
+                var baseCounterKey = new CounterKey(eventSourceName, name);
+                if (!allowedCounters.Contains(baseCounterKey))
+                {
+                    return;
+                }
+
+                if (!CounterMetricData.TryGetValue(baseCounterKey, out var baseCounterMetric))
+                {
+                    if (!counters.TryGetValue("DisplayName", out obj) || obj is not string baseDisplayName)
+                    {
+                        Log($"Failed to parse {name} event from {eventSourceName}");
+                        return;
+                    }
+                    if (counters.TryGetValue("DisplayUnits", out obj) && obj is string units && units.Length > 0)
+                    {
+                        baseDisplayName += $" ({units})";
+                    }
+                    var baseName = $"{baseCounterKey.EventSourceName.Replace(".", "-")}/{baseCounterKey.CounterName}";
+
+                    baseCounterMetric = new CounterMetric(baseName, baseDisplayName, IsTotal: baseDisplayName.StartsWith("Total"));
+                    CounterMetricData[baseCounterKey] = baseCounterMetric;
+                }
+
+                bool logged = Measure(baseCounterKey, baseCounterMetric, counters, "Increment", skipTypeInDisplayName: true);
+
+                if (!logged)
+                {
+                    if (baseCounterMetric.IsTotal)
+                    {
+                        logged |= Measure(baseCounterKey, baseCounterMetric, counters, "Max", skipTypeInDisplayName: true);
+                    }
+                    else
+                    {
+                        logged |= Measure(baseCounterKey, baseCounterMetric, counters, "Mean");
+                        logged |= Measure(baseCounterKey, baseCounterMetric, counters, "Max");
+                    }
+
+                }
+
+                if (!logged)
+                {
+                    Log($"Failed to parse {name} event value from {eventSourceName}");
+                }
+            }
+            else if (eventData.EventId == 0)
+            {
+                Log($"Received an error message from EventSource {eventSourceName}: {eventData.Message}");
+            }
+            else
+            {
+                Log($"Received an unknown event from EventSource {eventSourceName}: {eventData.EventName} ({eventData.EventId})");
+            }
+
+            static bool Measure(CounterKey baseCounterKey, CounterMetric baseCounterMetric, IDictionary<string, object> eventData, string type, bool skipTypeInDisplayName = false)
+            {
+                if (!eventData.TryGetValue(type, out var obj) || obj is not double value)
+                {
+                    return false;
+                }
+
+                var counterKey = baseCounterKey with { Type = type };
+                if (!CounterMetricData.TryGetValue(counterKey, out var counterMetric))
+                {
+                    var operation = type switch
+                    {
+                        "Mean" => Operations.Avg,
+                        "Increment" => Operations.Sum,
+                        "Max" => Operations.Max,
+                        _ => Operations.First
+                    };
+
+                    var displayName = baseCounterMetric.DisplayName;
+                    if (!skipTypeInDisplayName)
+                    {
+                        displayName += $" - {type}";
+                    }
+
+                    counterMetric = new CounterMetric(
+                        $"{baseCounterMetric.MetricName}/{operation}".ToLowerInvariant(),
+                        displayName,
+                        operation);
+
+                    CounterMetricData[counterKey] = counterMetric;
+
+                    BenchmarksEventSource.Register(
+                        counterMetric.MetricName,
+                        operation,
+                        Operations.Sum,
+                        counterMetric.DisplayName,
+                        counterMetric.DisplayName,
+                        "n0");
+                }
+
+                LogMetric(counterMetric.MetricName, value);
+                return true;
+            }
         }
     }
 }

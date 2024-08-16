@@ -29,6 +29,10 @@ namespace HttpClientBenchmarks
         public static Option<bool> UseDefaultRequestHeadersOption { get; } = new Option<bool>("--useDefaultRequestHeaders", () => false, "Use HttpClient.DefaultRequestHeaders whenever possible");
         public static Option<int> WarmupOption { get; } = new Option<int>("--warmup", () => ClientOptions.DefaultDuration, "Duration of the warmup in seconds");
         public static Option<int> DurationOption { get; } = new Option<int>("--duration", () => ClientOptions.DefaultDuration, "Duration of the test in seconds");
+        public static Option<bool> UseHttpClientFactoryOption { get; } = new Option<bool>("--useHttpClientFactory", () => false, "Use HttpClientFactory to create HttpClient instances");
+        public static Option<int> HcfHandlerLifetimeOption { get; } = new Option<int>("--hcfHandlerLifetime", () => 120, "HttpClientFactory Handler Lifetime in seconds");
+        public static Option<int> PooledConnectionLifetimeOption { get; } = new Option<int>("--pooledConnectionLifetime", () => -1, "Pooled Connection Lifetime in seconds");
+
 
         public static void AddOptionsToCommand(RootCommand command)
         {
@@ -55,6 +59,9 @@ namespace HttpClientBenchmarks
             command.AddOption(UseDefaultRequestHeadersOption);
             command.AddOption(WarmupOption);
             command.AddOption(DurationOption);
+            command.AddOption(UseHttpClientFactoryOption);
+            command.AddOption(HcfHandlerLifetimeOption);
+            command.AddOption(PooledConnectionLifetimeOption);
         }
 
         protected override ClientOptions GetBoundValue(BindingContext bindingContext)
@@ -84,7 +91,10 @@ namespace HttpClientBenchmarks
                 GeneratedDynamicHeadersCount = parsed.GetValueForOption(GeneratedDynamicHeadersCountOption),
                 UseDefaultRequestHeaders = parsed.GetValueForOption(UseDefaultRequestHeadersOption),
                 Warmup = parsed.GetValueForOption(WarmupOption),
-                Duration = parsed.GetValueForOption(DurationOption)
+                Duration = parsed.GetValueForOption(DurationOption),
+                UseHttpClientFactory = parsed.GetValueForOption(UseHttpClientFactoryOption),
+                HcfHandlerLifetime = parsed.GetValueForOption(HcfHandlerLifetimeOption),
+                PooledConnectionLifetime = parsed.GetValueForOption(PooledConnectionLifetimeOption)
             };
 
             var headers = parsed.GetValueForOption(HeaderOption) ?? Array.Empty<string>();
